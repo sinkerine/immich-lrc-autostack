@@ -1,0 +1,17 @@
+# Add this service to your Immich docker-compose.yaml (same project, so it can
+# reach immich-server on the default network), or run it standalone and point
+# IMMICH_API_URL at your server.
+services:
+  immich-lrc-autostack:
+    build: https://github.com/sinkerine/immich-lrc-autostack.git
+    env_file: .env                     # contains IMMICH_API_KEY
+    environment:
+      IMMICH_API_URL: http://immich-server:2283/api
+      LRC_BACKUPS_DIRS: /backups/catalog
+      IMMICH_LIBRARY_PATH: /mnt/photos # the folder as mounted into immich-server
+      # PATH_MAP: "P:/Photos/=/mnt/photos/"  # optional; auto-detected otherwise
+      INTERVAL: "3600"
+      DRY_RUN: "true"                  # flip to "false" after checking the logs
+    volumes:
+      - /path/to/lightroom/backups:/backups/catalog:ro
+    restart: unless-stopped
