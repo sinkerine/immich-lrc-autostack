@@ -7,11 +7,16 @@ services:
     env_file: .env                     # contains IMMICH_API_KEY
     environment:
       IMMICH_API_URL: http://immich-server:2283/api
-      LRC_BACKUPS_DIRS: /backups/catalog
+      LRC_BACKUPS_DIRS: /backups/desktop,/backups/laptop  # one folder per catalog
       IMMICH_LIBRARY_PATH: /mnt/photos # the folder as mounted into immich-server
       # PATH_MAP: "P:/Photos/=/mnt/photos/"  # optional; auto-detected otherwise
+      FOLDER_OWNER: newest-backup      # or latest-edit / all
+      STATE_FILE: /state/state.json
+      UNSTACK: "false"                 # "true" to follow unstacking in Lightroom
       INTERVAL: "3600"
       DRY_RUN: "true"                  # flip to "false" after checking the logs
     volumes:
-      - /path/to/lightroom/backups:/backups/catalog:ro
+      - ./lrc-autostack-state:/state   # writable by uid 1000
+      - /path/to/desktop/lightroom/backups:/backups/desktop:ro
+      - /path/to/laptop/lightroom/backups:/backups/laptop:ro
     restart: unless-stopped
