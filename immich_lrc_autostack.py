@@ -28,7 +28,7 @@ import urllib.error
 import urllib.request
 import zipfile
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 SAMPLE_SIZE = 500
 OWNER_POLICIES = ("newest-backup", "latest-edit", "all")
 
@@ -80,8 +80,18 @@ def parse_args(argv=None):
                       help="only print what would change [DRY_RUN=true]")
     p.add_argument("--interval", type=int, default=int(os.environ.get("INTERVAL", "0")),
                    help="seconds between runs; 0 runs once and exits [INTERVAL]")
+    p.add_argument("--run-at", action="append", default=None, metavar="HH:MM",
+                   help="run daily at this local time (set TZ); repeatable. Runs once at startup too. "
+                        "Overrides --interval [RUN_AT, comma-separated]")
     p.add_argument("--version", action="version", version=__version__)
     args = p.parse_args(argv)
+
+    args.run_at = args.run_at or env_list("RUN_AT")
+    try:
+        args.run_at = sorted({(int(h), int(mm)) for h, mm in (t.split(":") for t in args.run_at)})
+        assert all(0 <= h < 24 and 0 <= mm < 60 for h, mm in args.run_at)
+    except (ValueError, AssertionError):
+        p.error("--run-at must look like HH:MM")
 
     args.backups_dir = args.backups_dir or env_list("LRC_BACKUPS_DIRS")
     if not args.backups_dir:
@@ -424,18 +434,34 @@ def run_once(args):
         + (f", {removed} photos {verb}unstacked, {deleted} stacks {verb}deleted" if args.unstack else ""))
 
 
+def seconds_until_next(times, now=None):
+    """Seconds from now until the next local HH:MM in times."""
+    now = time.time() if now is None else now
+    lt = time.localtime(now)
+    for day in range(2):
+        for h, mm in times:
+            # mktime normalizes day overflow and DST.
+            t = time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday + day, h, mm, 0, 0, 0, -1))
+            if t > now:
+                return t - now
+    raise ValueError("no run times")
+
+
 def main(argv=None):
     args = parse_args(argv)
+    looping = bool(args.run_at or args.interval)
     while True:
         try:
             run_once(args)
         except Exception as e:  # keep looping; the next run retries
             log(f"error: {e}")
-            if not args.interval:
+            if not looping:
                 return 1
-        if not args.interval:
+        if not looping:
             return 0
-        time.sleep(args.interval)
+        delay = seconds_until_next(args.run_at) if args.run_at else args.interval
+        log(f"next run at {time.strftime('%Y-%m-%d %H:%M %Z', time.localtime(time.time() + delay))}")
+        time.sleep(delay)
 
 
 if __name__ == "__main__":

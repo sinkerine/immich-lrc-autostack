@@ -1,8 +1,11 @@
 """End-to-end tests against a fake Immich and generated catalogs. Run: python3 -m unittest"""
+import contextlib
+import io
 import os
 import sqlite3
 import sys
 import tempfile
+import time
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -188,6 +191,40 @@ class AutostackTest(unittest.TestCase):
                                  f"--state-file={self.state}"]))
         self.assertEqual(self.immich.groups(), {})
         self.assertFalse(os.path.exists(self.state))
+
+
+
+class ScheduleTest(unittest.TestCase):
+    def setUp(self):
+        self.tz = os.environ.get("TZ")
+        os.environ["TZ"] = "UTC"
+        time.tzset()
+
+    def tearDown(self):
+        if self.tz is None:
+            os.environ.pop("TZ", None)
+        else:
+            os.environ["TZ"] = self.tz
+        time.tzset()
+
+    def at(self, hh, mm):
+        return time.mktime((2025, 6, 1, hh, mm, 0, 0, 0, -1))
+
+    def test_later_today(self):
+        self.assertEqual(m.seconds_until_next([(3, 0)], self.at(1, 30)), 90 * 60)
+
+    def test_tomorrow(self):
+        self.assertEqual(m.seconds_until_next([(3, 0)], self.at(3, 0)), 24 * 3600)
+
+    def test_several_times(self):
+        self.assertEqual(m.seconds_until_next([(3, 0), (15, 0)], self.at(4, 0)), 11 * 3600)
+
+    def test_parse(self):
+        os.environ["IMMICH_API_KEY"] = "test"
+        args = m.parse_args(["--backups-dir=/x", "--run-at=15:00", "--run-at=3:05"])
+        self.assertEqual(args.run_at, [(3, 5), (15, 0)])
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            m.parse_args(["--backups-dir=/x", "--run-at=25:00"])
 
 
 if __name__ == "__main__":

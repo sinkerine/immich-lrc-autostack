@@ -63,7 +63,8 @@ services:
       FOLDER_OWNER: newest-backup       # or latest-edit / all
       STATE_FILE: /state/state.json
       UNSTACK: "false"                  # "true" to follow unstacking in Lightroom
-      INTERVAL: "3600"                  # run hourly
+      RUN_AT: "03:00"                   # daily, after Immich's midnight library scan
+      TZ: America/New_York              # timezone for RUN_AT
       DRY_RUN: "true"                   # set to "false" once the logs look right
     volumes:
       - ./lrc-autostack-state:/state    # must be writable by uid 1000
@@ -141,7 +142,8 @@ Compose. Command-line flags win.
 | `--unstack` | `UNSTACK` | off | Remove photos from Immich stacks when the owning catalog no longer stacks them together. Needs `--state-file`; not allowed with `all`. |
 | `--state-file` | `STATE_FILE` | — | JSON file listing the photos this tool manages, so `--unstack` never touches stacks made elsewhere. Keep it persistent. |
 | `--dry-run` / `--apply` | `DRY_RUN` | dry run | Only log, or actually create stacks. |
-| `--interval` | `INTERVAL` | `0` | Seconds between runs. `0` runs once and exits. |
+| `--run-at` (repeatable) | `RUN_AT` (comma-separated) | — | Run daily at `HH:MM` local time (set `TZ`), plus once at startup. Takes precedence over `--interval`. |
+| `--interval` | `INTERVAL` | `0` | Seconds between runs. `0` (and no `--run-at`) runs once and exits. |
 
 ## How path matching works
 

@@ -13,7 +13,8 @@ services:
       FOLDER_OWNER: newest-backup      # or latest-edit / all
       STATE_FILE: /state/state.json
       UNSTACK: "false"                 # "true" to follow unstacking in Lightroom
-      INTERVAL: "3600"
+      RUN_AT: "03:00"                  # daily; after Immich's nightly library scan
+      TZ: America/New_York
       DRY_RUN: "true"                  # flip to "false" after checking the logs
     volumes:
       - ./lrc-autostack-state:/state   # writable by uid 1000
